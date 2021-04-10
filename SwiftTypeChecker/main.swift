@@ -36,6 +36,7 @@ protocol Visitor {
     func visitFunApp(fcn: PCFTerm, arg: PCFTerm) -> PCFType
     func visitRecDef(name: String, rType: PCFType, b: PCFTerm) -> PCFType
     func visitCond(condVal: PCFTerm, tExpVal: PCFTerm, eExpVal: PCFTerm) -> PCFType
+    func visitLet(s: String, tp: PCFType, lexp: PCFTerm, exp: PCFTerm) -> PCFType
 }
 
 // Interface for an environment.
@@ -185,6 +186,25 @@ class ifCondTerm: PCFTerm {
     }
 }
 
+class letTerm: PCFTerm {
+    var s: String
+    var tp: PCFType
+    var lexp: PCFTerm
+    var exp: PCFTerm
+    init(s: String, tp: PCFType, lexp: PCFTerm, exp: PCFTerm) {
+        self.s = s
+        self.tp = tp
+        self.lexp = lexp
+        self.exp = exp
+    }
+    func asString() -> String {
+        return "let \(s): \(tp.asString()) = \(lexp.asString()) in \(exp.asString())"
+    }
+    func accept(_ visitor: Visitor) -> PCFType {
+        return visitor.visitLet(s: s, tp: tp, lexp: lexp, exp: exp)
+    }
+}
+
 // this class will be returned if the type cannot be figured out/if there is an error.
 class errorType: PCFType {
     func isEqualTo(_ other: PCFType) -> Bool {
@@ -316,6 +336,17 @@ class typeCheckVisitor: Visitor {
             return errorType()
         }
     }
+    func visitLet(s: String, tp: PCFType, lexp: PCFTerm, exp: PCFTerm) -> PCFType {
+        var nextEnv: Environment = env
+        nextEnv.dictionary[s] = tp
+        let lexptp: PCFType = lexp.accept(typeCheckVisitor(env: emptyEnv))
+        let exptp: PCFType = exp.accept(typeCheckVisitor(env: nextEnv))
+        if (lexptp.isEqualTo(tp)) {
+            return exptp
+        } else {
+            return errorType()
+        }
+    }
 }
 
 // This is the environment class, it takes in a dictionary that will associate strings with types.
@@ -355,3 +386,8 @@ print(test4.accept(typeCheckVisitor(env: emptyEnv)).asString())
 var test5: PCFTerm = recDefTerm(fcnName: "sum", fcntp: funcFromTo(from: integerType(), to: funcFromTo(from: integerType(), to: integerType())) , body: functionTerm(param: "x", ptype: integerType(), body: functionTerm(param: "y", ptype: integerType(), body: ifCondTerm(condition: funAppTerm(fcn: isZeroTerm(), arg: iDTerm(name: "x")), thenExp: iDTerm(name: "y"), elseExp: funAppTerm(fcn: funAppTerm(fcn: iDTerm(name: "sum"), arg: funAppTerm(fcn: predTerm(), arg: iDTerm(name: "x"))), arg: funAppTerm(fcn: succTerm(), arg: iDTerm(name: "y")))))))
 print("Type of \(test5.asString()) is:")
 print(test5.accept(typeCheckVisitor(env: emptyEnv)).asString())
+
+// test the type of a let expression.
+var test6: PCFTerm = letTerm(s: "f", tp: funcFromTo(from: integerType(), to: integerType()), lexp: functionTerm(param: "x", ptype: integerType(), body: funAppTerm(fcn: succTerm(), arg: iDTerm(name: "x"))), exp: funAppTerm(fcn: iDTerm(name: "f"), arg: numTerm(number: 0)))
+print("Type of \(test6.asString()) is:")
+print(test6.accept(typeCheckVisitor(env: emptyEnv)).asString())
