@@ -15,6 +15,6 @@ We can then use our typeCheckVisitor to figure out the type of this expression. 
 
 Note that we needed to pass a parameter of type Environment into the `typeCheckVisitor()` method. An environment simply maps strings onto types. In our sumDefinition example, we started with an empty environment, which was defined as follows:
 
-`var emptyEnv: Environment;`
+`var emptyEnv: Environment;`   
 `emptyEnv = Env(env: [:])`
 
