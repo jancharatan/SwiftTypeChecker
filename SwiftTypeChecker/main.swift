@@ -329,8 +329,7 @@ class Env: Environment {
 // Tests:
 
 // create an empty environment for the tests.
-var emptyEnv: Environment;
-emptyEnv = Env(env: [:])
+var emptyEnv: Environment = Env(env: [:])
 
 // test the type of the successor function applied to the number 47.
 var test1: PCFTerm = funAppTerm(fcn: succTerm(), arg: numTerm(number: 47))

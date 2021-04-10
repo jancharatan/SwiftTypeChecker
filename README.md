@@ -3,7 +3,7 @@ This project contains a type checker for the PCF language built in Swift using t
 
 Here is an example of the definition for the sum function in the PCF language:
 
-`sum:: (Integer -> Integer -> Integer) => fn x: Integer => fn y: Integer => if (IsZero (x)) then (y) else (sum (Pred (x))  (Succ (y)))`
+`sum :: (Integer -> Integer -> Integer) => fn x: Integer => fn y: Integer => if (IsZero (x)) then (y) else (sum (Pred (x))  (Succ (y)))`
 
 We can represent this expression using a PCFTerm as follows:
 
@@ -15,6 +15,4 @@ We can then use our typeCheckVisitor to figure out the type of this expression. 
 
 Note that we needed to pass a parameter of type Environment into the `typeCheckVisitor()` method. An environment simply maps strings onto types. In our sumDefinition example, we started with an empty environment, which was defined as follows:
 
-`var emptyEnv: Environment;`   
-`emptyEnv = Env(env: [:])`
-
+`var emptyEnv: Environment = Env(env: [:])` 
