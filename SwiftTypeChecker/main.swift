@@ -24,6 +24,12 @@ protocol FunctionType: PCFType {
     var range: PCFType { get set }
 }
 
+// Interface for a function type; extension of PCFType
+protocol PairType: PCFType {
+    var fst: PCFType { get set }
+    var snd: PCFType { get set }
+}
+
 // Interface for a Visitor
 protocol Visitor {
     func visitID(id: String) -> PCFType
@@ -37,6 +43,9 @@ protocol Visitor {
     func visitRecDef(name: String, rType: PCFType, b: PCFTerm) -> PCFType
     func visitCond(condVal: PCFTerm, tExpVal: PCFTerm, eExpVal: PCFTerm) -> PCFType
     func visitLet(s: String, tp: PCFType, lexp: PCFTerm, exp: PCFTerm) -> PCFType
+    func visitPair(fst: PCFTerm, snd: PCFTerm) -> PCFType
+    func visitFirst(pair: PCFTerm) -> PCFType
+    func visitSecond(pair: PCFTerm) -> PCFType
 }
 
 // Interface for an environment.
@@ -161,7 +170,7 @@ class recDefTerm: PCFTerm {
         self.body = body
     }
     func asString() -> String {
-        return "\(fcnName):\(fcntp.asString()) => \(body.asString())"
+        return "rec (\(fcnName): \(fcntp.asString()) => \(body.asString()))"
     }
     func accept(_ visitor: Visitor) -> PCFType {
         return visitor.visitRecDef(name: fcnName, rType: fcntp, b: body)
@@ -186,6 +195,7 @@ class ifCondTerm: PCFTerm {
     }
 }
 
+// Let expression.
 class letTerm: PCFTerm {
     var s: String
     var tp: PCFType
@@ -202,6 +212,50 @@ class letTerm: PCFTerm {
     }
     func accept(_ visitor: Visitor) -> PCFType {
         return visitor.visitLet(s: s, tp: tp, lexp: lexp, exp: exp)
+    }
+}
+
+// Tuple.
+class pairTerm: PCFTerm {
+    var fst: PCFTerm
+    var snd: PCFTerm
+    init(fst: PCFTerm, snd: PCFTerm) {
+        self.fst = fst
+        self.snd = snd
+    }
+    func asString() -> String {
+        return "(\(fst.asString()), \(snd.asString()))"
+    }
+    func accept(_ visitor: Visitor) -> PCFType {
+        return visitor.visitPair(fst: fst, snd: snd)
+    }
+}
+
+// Gets first element from tuple.
+class fstTerm: PCFTerm {
+    var pair: PCFTerm
+    init(pair: PCFTerm) {
+        self.pair = pair
+    }
+    func asString() -> String {
+        return "first (\(pair.asString()))"
+    }
+    func accept(_ visitor: Visitor) -> PCFType {
+        return visitor.visitFirst(pair: pair)
+    }
+}
+
+// Gets second element from tuple.
+class sndTerm: PCFTerm {
+    var pair: PCFTerm
+    init(pair: PCFTerm) {
+        self.pair = pair
+    }
+    func asString() -> String {
+        return "second (\(pair.asString()))"
+    }
+    func accept(_ visitor: Visitor) -> PCFType {
+        return visitor.visitSecond(pair: pair)
     }
 }
 
@@ -249,13 +303,37 @@ class booleanType: PCFType {
     }
 }
 
+// this is a class that implements the pairtype protocol; represents a pair made up of two types.
+class pairType: PairType {
+    var fst: PCFType
+    var snd: PCFType
+    init(fst: PCFType, snd: PCFType) {
+        self.fst = fst
+        self.snd = snd
+    }
+    func isEqualTo(_ other: PCFType) -> Bool {
+        switch other {
+            case let other as PairType:
+                if ((fst.isEqualTo(other.fst)) && (snd.isEqualTo(other.snd))) {
+                    return true
+                }
+            default:
+                return false
+        }
+        return false
+    }
+    func asString() -> String {
+        return "(\(fst.asString()), \(snd.asString()))"
+    }
+}
+
 // this is a class that implements the functiontype protocol; represents a function from one type to another.
 class funcFromTo: FunctionType {
     var domain: PCFType
     var range: PCFType
-    init(from: PCFType, to: PCFType) {
-        domain = from
-        range = to
+    init(domain: PCFType, range: PCFType) {
+        self.domain = domain
+        self.range = range
     }
     func isEqualTo(_ other: PCFType) -> Bool {
         switch other {
@@ -292,19 +370,19 @@ class typeCheckVisitor: Visitor {
         return booleanType()
     }
     func visitSucc() -> PCFType {
-        return funcFromTo(from: integerType(), to: integerType())
+        return funcFromTo(domain: integerType(), range: integerType())
     }
     func visitPred() -> PCFType {
-        return funcFromTo(from: integerType(), to: integerType())
+        return funcFromTo(domain: integerType(), range: integerType())
     }
     func visitIsZero() -> PCFType {
-        return funcFromTo(from: integerType(), to: booleanType())
+        return funcFromTo(domain: integerType(), range: booleanType())
     }
     func visitFunParam(param: String, pType: PCFType, b: PCFTerm) -> PCFType {
         var nextEnv: Environment = env
         nextEnv.dictionary[param] = pType
         let bodyType: PCFType = b.accept(typeCheckVisitor(env: nextEnv))
-        return funcFromTo(from: pType, to: bodyType)
+        return funcFromTo(domain: pType, range: bodyType)
     }
     func visitFunApp(fcn: PCFTerm, arg: PCFTerm) -> PCFType {
         switch(fcn.accept(self)) {
@@ -347,6 +425,29 @@ class typeCheckVisitor: Visitor {
             return errorType()
         }
     }
+    func visitPair(fst: PCFTerm, snd: PCFTerm) -> PCFType {
+        let tpFst: PCFType = fst.accept(typeCheckVisitor(env: emptyEnv))
+        let tpSnd: PCFType = snd.accept(typeCheckVisitor(env: emptyEnv))
+        return pairType(fst: tpFst, snd: tpSnd)
+    }
+    func visitFirst(pair: PCFTerm) -> PCFType {
+        let pairTp: PCFType = pair.accept(typeCheckVisitor(env: emptyEnv))
+        switch pairTp {
+        case let p as PairType:
+            return p.fst
+        default:
+            return errorType()
+        }
+    }
+    func visitSecond(pair: PCFTerm) -> PCFType {
+        let pairTp: PCFType = pair.accept(typeCheckVisitor(env: emptyEnv))
+        switch pairTp {
+        case let p as PairType:
+            return p.snd
+        default:
+            return errorType()
+        }
+    }
 }
 
 // This is the environment class, it takes in a dictionary that will associate strings with types.
@@ -383,11 +484,19 @@ print("Type of \(test4.asString()) is:")
 print(test4.accept(typeCheckVisitor(env: emptyEnv)).asString())
 
 // test the type of the definition of sum, a recursively defined function.
-var test5: PCFTerm = recDefTerm(fcnName: "sum", fcntp: funcFromTo(from: integerType(), to: funcFromTo(from: integerType(), to: integerType())) , body: functionTerm(param: "x", ptype: integerType(), body: functionTerm(param: "y", ptype: integerType(), body: ifCondTerm(condition: funAppTerm(fcn: isZeroTerm(), arg: iDTerm(name: "x")), thenExp: iDTerm(name: "y"), elseExp: funAppTerm(fcn: funAppTerm(fcn: iDTerm(name: "sum"), arg: funAppTerm(fcn: predTerm(), arg: iDTerm(name: "x"))), arg: funAppTerm(fcn: succTerm(), arg: iDTerm(name: "y")))))))
+var test5: PCFTerm = recDefTerm(fcnName: "sum", fcntp: funcFromTo(domain: integerType(), range: funcFromTo(domain: integerType(), range: integerType())) , body: functionTerm(param: "x", ptype: integerType(), body: functionTerm(param: "y", ptype: integerType(), body: ifCondTerm(condition: funAppTerm(fcn: isZeroTerm(), arg: iDTerm(name: "x")), thenExp: iDTerm(name: "y"), elseExp: funAppTerm(fcn: funAppTerm(fcn: iDTerm(name: "sum"), arg: funAppTerm(fcn: predTerm(), arg: iDTerm(name: "x"))), arg: funAppTerm(fcn: succTerm(), arg: iDTerm(name: "y")))))))
 print("Type of \(test5.asString()) is:")
 print(test5.accept(typeCheckVisitor(env: emptyEnv)).asString())
 
 // test the type of a let expression.
-var test6: PCFTerm = letTerm(s: "f", tp: funcFromTo(from: integerType(), to: integerType()), lexp: functionTerm(param: "x", ptype: integerType(), body: funAppTerm(fcn: succTerm(), arg: iDTerm(name: "x"))), exp: funAppTerm(fcn: iDTerm(name: "f"), arg: numTerm(number: 0)))
+var test6: PCFTerm = letTerm(s: "f", tp: funcFromTo(domain: integerType(), range: integerType()), lexp: functionTerm(param: "x", ptype: integerType(), body: funAppTerm(fcn: succTerm(), arg: iDTerm(name: "x"))), exp: funAppTerm(fcn: iDTerm(name: "f"), arg: numTerm(number: 0)))
 print("Type of \(test6.asString()) is:")
 print(test6.accept(typeCheckVisitor(env: emptyEnv)).asString())
+
+var test7: PCFTerm = pairTerm(fst: test1, snd: boolTerm(value: true))
+print("Type of \(test7.asString()) is:")
+print(test7.accept(typeCheckVisitor(env: emptyEnv)).asString())
+
+var test8: PCFTerm = sndTerm(pair: test7)
+print("Type of \(test8.asString()) is:")
+print(test8.accept(typeCheckVisitor(env: emptyEnv)).asString())
