@@ -136,7 +136,7 @@ class functionTerm: PCFTerm {
         self.body = body
     }
     func asString() -> String {
-        return "fn \(param):\(ptype.asString()) => \(body.asString())"
+        return "fn \(param): \(ptype.asString()) => \(body.asString())"
     }
     func accept (_ visitor: Visitor) -> PCFType {
         return visitor.visitFunParam(param: param, pType: ptype, b: body)

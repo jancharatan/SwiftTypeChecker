@@ -3,7 +3,7 @@ This project contains a type checker for the PCF language built in Swift using t
 
 Here is an example of the definition for the sum function in the PCF language:
 
-`sum :: (Integer -> Integer -> Integer) => fn x: Integer => fn y: Integer => if (IsZero (x)) then (y) else (sum (Pred (x))  (Succ (y)))`
+`rec (sum :: (Integer -> Integer -> Integer) => fn x: Integer => fn y: Integer => if (IsZero (x)) then (y) else (sum (Pred (x))  (Succ (y))))`
 
 We can represent this expression using a PCFTerm as follows:
 
