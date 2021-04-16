@@ -262,11 +262,7 @@ class sndTerm: PCFTerm {
 // this class will be returned if the type cannot be figured out/if there is an error.
 class errorType: PCFType {
     func isEqualTo(_ other: PCFType) -> Bool {
-        if other is errorType {
-            return true
-        } else {
-            return false
-        }
+        return other is errorType
     }
     func asString() -> String {
         return "Error"
@@ -277,11 +273,7 @@ class errorType: PCFType {
 // this class represents an integer type.
 class integerType: PCFType {
     func isEqualTo(_ other: PCFType) -> Bool {
-        if other is integerType {
-            return true
-        } else {
-            return false
-        }
+        return other is integerType
     }
     func asString() -> String {
         return "Integer"
@@ -292,11 +284,7 @@ class integerType: PCFType {
 // this class represents the boolean type.
 class booleanType: PCFType {
     func isEqualTo(_ other: PCFType) -> Bool {
-        if other is booleanType {
-            return true
-        } else {
-            return false
-        }
+        return other is booleanType
     }
     func asString() -> String {
         return "Boolean"
